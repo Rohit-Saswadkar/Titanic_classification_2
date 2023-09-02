@@ -1,0 +1,234 @@
+import pandas as pd
+import numpy as np
+import seaborn as sns
+import matplotlib.pyplot as plt
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import r2_score,mean_squared_error
+
+
+titanic_df=pd.read_csv(r"C:\Users\saswa\OneDrive\Documents\pandas data\data\ML_data\Bharat Internship\titanic\train.csv")
+
+test_df=pd.read_csv(r"C:\Users\saswa\OneDrive\Documents\pandas data\data\ML_data\Bharat Internship\titanic\test.csv")
+
+gender_df=pd.read_csv(r"C:\Users\saswa\OneDrive\Documents\pandas data\data\ML_data\Bharat Internship\titanic\gender_submission.csv")
+
+print(titanic_df.head())
+print(titanic_df.tail())
+
+# get initial info of data
+print('Info\n',titanic_df.info())
+print('Info of test data\n',test_df.info())
+
+# check shape of the data
+print('Shape of Train data\n',titanic_df.shape)
+print('Shape of Test data\n',test_df.shape)
+
+# check columns of train test
+print('Columns of train\n',titanic_df.columns)
+print('Columns of test\n',test_df.columns)
+
+# check missing data
+print('Isnull of train data\n',titanic_df.isnull().sum())
+print('Isnull of test data\n',test_df.isnull().sum())
+
+# there are 687 null out of 891 rows in cabin so i am going to drop it
+titanic_df.drop(columns=['Cabin','Name','Ticket','PassengerId'],inplace=True)
+test_df.drop(columns=['Cabin','Name','Ticket','PassengerId'],inplace=True)
+
+
+# check classes in each column
+for col in titanic_df.columns:
+    print(f'Class of {col} ',titanic_df[col].value_counts())
+
+# check the column name embarked
+print('Embarked column',titanic_df['Embarked'].head())
+
+
+# now fill age and embarked column by median
+titanic_df['Age'].fillna(titanic_df['Age'].median(),inplace=True)
+
+test_df['Age'].fillna(test_df['Age'].median(),inplace=True)
+
+# filling the null of embarked column by mode
+titanic_df['Embarked'].fillna(titanic_df['Embarked'].mode()[0],inplace=True)
+
+# apply frequency encoding on fare
+frequency_map_train = titanic_df['Fare'].value_counts(normalize=True)
+
+titanic_df['Fare'] = titanic_df['Fare'].map(frequency_map_train)
+
+frequency_map_test = test_df ['Fare'].value_counts(normalize=True)
+
+test_df['Fare'] = test_df['Fare'].map(frequency_map_test)
+
+print('Frequency encoding applied on fare',titanic_df['Fare'].head())
+# check the data in embarked column
+print('Embarked column after dropna',titanic_df['Embarked'].head())
+
+
+# get the value counts in embarked
+print(titanic_df['Embarked'].value_counts())
+
+
+# check null
+print('After fillna and dropna\n',titanic_df.isnull().sum())
+
+# get data encoding on train and test data
+titanic_df.replace({ 'Sex' : {'male':0,'female':1}, 'Embarked':{'S':0,'C':1,'Q':2}}, inplace= True)
+
+test_df.replace({'Sex':{'male':0,'female':1}, 'Embarked': {'S':0,'C':1,'Q':2}},inplace=True)
+
+print(titanic_df[['Sex','Embarked']].head())
+print('Test df columns after encoding',test_df[['Sex','Embarked']].head())
+
+
+# get description of the data
+print(titanic_df.describe())
+
+# get info of the data
+print('Info after filling\n',titanic_df.info())
+print('Info of test data',test_df.info())
+
+# get columns of dataframe
+print(titanic_df.columns)
+
+
+# final data
+print('Final datas',titanic_df.columns)
+print(titanic_df.info())
+print(test_df.info())
+
+
+
+# Data visualization
+
+sns.set()
+
+# making a count plot for survived column
+sns.countplot(x = 'Survived', data = titanic_df)
+# plt.show()
+plt.close()
+
+# check sex ratio
+sns.countplot(x = 'Sex',data= titanic_df)
+# plt.show()
+plt.close()
+
+# check number of survivors Gender wise
+sns.countplot( x = 'Sex', hue='Survived',data=titanic_df)
+# plt.show()
+plt.close()
+
+# get countplot dfor passenger class
+sns.countplot(x= 'Pclass',hue='Survived',data=titanic_df)
+# plt.show()
+plt.close()
+
+# convert categorical columns to numerical ones
+print('Sex value counts\n',titanic_df['Sex'].value_counts())
+
+print('Embarked value counts\n',titanic_df['Embarked'].value_counts())
+
+print('DF SHAPE\n',titanic_df.shape)
+print('DF columns\n',titanic_df.columns)
+
+
+
+
+
+# Model Buildup
+
+X= titanic_df.drop(columns=['Survived'],axis=1)
+y= titanic_df['Survived']
+
+# apply min max scaler
+scaler = MinMaxScaler()
+X = scaler.fit_transform(X)
+
+# train , test , split
+x_train, x_test, y_train, y_test = train_test_split(X, y, test_size= 0.2, random_state=42)
+
+# get model
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.linear_model import LogisticRegression
+
+model = LogisticRegression()
+# model = DecisionTreeClassifier(random_state=42)
+# model= RandomForestClassifier(n_estimators=100, random_state=42)
+
+# apply model
+model.fit(x_train,y_train)
+
+x_train_pred = model.predict(x_train)
+y_pred = model.predict(x_test)
+
+# get accuracies
+from sklearn.metrics import accuracy_score, mean_squared_error,r2_score
+
+accuracy = accuracy_score(y_test, y_pred)
+
+mse=mean_squared_error(y_test, y_pred)
+
+r2= r2_score(y_test, y_pred)
+
+print('Accuracy of x_train pred',accuracy_score(y_train, x_train_pred))
+print('Accuracy',accuracy)
+print('MSE',mse)
+print('R2',r2)
+
+
+
+
+
+
+
+import pickle
+import numpy as np
+from flask import Flask, render_template, request
+
+
+# Load your Titanic survival prediction model and preprocessing components
+with open('your_model.pkl', 'rb') as model_file:
+    model = pickle.load(model_file)
+
+import pickle
+import numpy as np
+
+# Load your Titanic survival prediction model
+with open('your_model.pkl', 'rb') as model_file:
+    model = pickle.load(model_file)
+
+
+# Define a function to make predictions
+def predict_titanic_survival(Pclass, Sex, Age, SibSp, Parch, Fare, Embarked):
+    try:
+        # Apply any necessary preprocessing steps to input data
+        # Create a feature vector from user inputs
+        input_data = np.array([[Pclass, Sex, Age, SibSp, Parch, Fare, Embarked]])
+
+        # Make a prediction
+        prediction = model.predict(input_data)[0]
+
+        if prediction == 0:
+            prediction_text = 'Not Survived'
+        else:
+            prediction_text = 'Survived'
+
+        return prediction_text
+    except Exception as e:
+        return str(e)
+
+
+# Example usage:
+Pclass = int(input('Enter the passenger class from 1 to 3:'))
+Sex = int(input("Enter the sex M:0, F:1 :"))
+Age = int(input('Enter the age:'))
+SibSp = int(input('Enter the sibsp 0,1,2,3,4,5,8:'))
+Parch = int(input('Enter the parch 0,1,2,3,4,5,6:'))
+Fare = float(input("Enter the fare between 1 to 100:"))
+Embarked = int(input('Enter the Embarked S:0, C:1, Q:2 :'))
+
+prediction_result = predict_titanic_survival(Pclass, Sex, Age, SibSp, Parch, Fare, Embarked)
+print(f"Prediction: {prediction_result}")
